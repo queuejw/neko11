@@ -402,7 +402,7 @@ class CatControlsFragment : Fragment(), PrefsListener {
     }
     companion object {
         var showTipAgain = true
-        val randomfood = Random().nextInt(248 - 10 + 1) + 10
+        val randomfood = Random().nextInt(250 - 10 + 1) + 10
         val foodstaterandom = Random().nextInt(11 - 1 + 1) + 1
         @JvmField
         val randomWater = Random().nextInt(150 - 12 + 1) + 5

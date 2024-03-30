@@ -23,15 +23,23 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.elevation.SurfaceColors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import ru.dimon6018.neko11.NekoApplication.Companion.getNekoTheme
 import ru.dimon6018.neko11.R
 import ru.dimon6018.neko11.ui.fragments.NekoLandFragment
 import ru.dimon6018.neko11.ui.fragments.NekoLandFragment.Companion.shareCat
 import ru.dimon6018.neko11.workers.Cat
 import ru.dimon6018.neko11.workers.Cat.Companion.create
+import ru.dimon6018.neko11.workers.NekoWorker
 import ru.dimon6018.neko11.workers.PrefState
 
 class NekoAboutActivity : AppCompatActivity() {
+
+    private var imageViewCat: ImageView? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(getNekoTheme(this))
         super.onCreate(savedInstanceState)
@@ -44,9 +52,10 @@ class NekoAboutActivity : AppCompatActivity() {
         window.navigationBarColor = SurfaceColors.SURFACE_2.getColor(this)
         val github = findViewById<MaterialButton>(R.id.github_button)
         val tg = findViewById<MaterialButton>(R.id.telegram_button)
+        imageViewCat = findViewById(R.id.imageViewCat)
         github.setOnClickListener { openWeb(this, "https://github.com/queuejw/Neko11") }
         tg.setOnClickListener { openWeb(this, "https://t.me/nekoapp_news") }
-        setupCatImage()
+        setupCatImage(this)
         val cord = findViewById<CoordinatorLayout>(R.id.coordinatorabout)
         ViewCompat.setOnApplyWindowInsetsListener(cord) { v: View, insets: WindowInsetsCompat ->
             val pB = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
@@ -66,6 +75,10 @@ class NekoAboutActivity : AppCompatActivity() {
                     .setNegativeButton(android.R.string.cancel, null)
                     .show()
         }
+        imageViewCat!!.setOnClickListener {
+            val mPrefs = PrefState(this)
+            NekoWorker.notifyCat(this, NekoWorker.getExistingCat(mPrefs), "?????")
+        }
     }
     @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(requestCode: Int,
@@ -82,15 +95,20 @@ class NekoAboutActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun setupCatImage() {
-        Thread {
-            val cat: Cat = create(this)
-            val bitmap = cat.createIconBitmap(NekoLandFragment.EXPORT_BITMAP_SIZE, NekoLandFragment.EXPORT_BITMAP_SIZE, 0)
-            runOnUiThread {
-                val imageViewCat = findViewById<ImageView>(R.id.imageViewCat)
-                imageViewCat.setImageBitmap(bitmap)
+    private fun setupCatImage(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val cat: Cat = create(context)
+            val bitmap = cat.createIconBitmap(
+                NekoLandFragment.EXPORT_BITMAP_SIZE,
+                NekoLandFragment.EXPORT_BITMAP_SIZE,
+                0
+            )
+            runBlocking {
+                runOnUiThread {
+                    imageViewCat?.setImageBitmap(bitmap)
+                }
             }
-        }.start()
+        }
     }
     private fun saveAllCatsToGallery(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -115,25 +133,25 @@ class NekoAboutActivity : AppCompatActivity() {
         }
     }
     private fun saveAllCatsToGalleryContinue(context: Context) {
-        val mPrefs = PrefState(context)
-        Thread {
-            var pos = 0
-            val max = PrefState(context).cats.size
-            val list =  mPrefs.cats
-            while (pos != max) {
-                val cat = list[pos]
-                shareCat(this, cat, false)
-                pos += 1
+        CoroutineScope(Dispatchers.IO).launch {
+            val mPrefs = PrefState(context)
+            val max = mPrefs.cats.size
+            val list = mPrefs.cats
+            for (i in 0..max) {
+                val cat = list[i]
+                shareCat(this@NekoAboutActivity, cat, false)
             }
-            runOnUiThread {
-                MaterialAlertDialogBuilder(this)
+            runBlocking {
+                runOnUiThread {
+                    MaterialAlertDialogBuilder(context)
                         .setIcon(AppCompatResources.getDrawable(context, R.drawable.ic_success))
                         .setTitle(R.string.save_title)
                         .setMessage(R.string.save_all_cats_done)
                         .setPositiveButton(android.R.string.ok, null)
                         .show()
+                }
             }
-        }.start()
+        }
     }
     companion object {
         fun openWeb(activity: Activity, link: String?) {

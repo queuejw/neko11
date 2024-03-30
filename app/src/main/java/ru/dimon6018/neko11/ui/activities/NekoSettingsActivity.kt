@@ -236,10 +236,10 @@ class NekoSettingsActivity : AppCompatActivity(), PrefsListener {
         dyncolor!!.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
             val editor = nekoprefs!!.edit()
             if (isChecked) {
-                editor.putInt("theme", 8)
+                editor.putInt("colorScheme", 8)
                 editor.apply()
             } else {
-                editor.putInt("theme", 0)
+                editor.putInt("colorScheme", 0)
                 editor.apply()
             }
             refreshUi()
