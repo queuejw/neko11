@@ -275,7 +275,7 @@ class NekoSettingsActivity : AppCompatActivity(), PrefsListener {
             refreshUi()
         }
         musicSwitch!!.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-           mPrefs!!.setMusic(isChecked)
+          // mPrefs!!.setMusic(isChecked)
             refreshUi()
         }
         legacyFood!!.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
@@ -478,7 +478,7 @@ class NekoSettingsActivity : AppCompatActivity(), PrefsListener {
                     .show()
         }
     }
-
+    @Deprecated("Deprecated in Java")
     private fun openFile() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
         intent.addCategory(Intent.CATEGORY_OPENABLE)

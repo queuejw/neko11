@@ -55,6 +55,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.dimon6018.neko11.activation.NekoActivationActivity
 import ru.dimon6018.neko11.controls.CatControlsFragment
 import ru.dimon6018.neko11.controls.CatControlsFragment.Companion.showTipAgain
@@ -99,8 +100,9 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
         navbar = findViewById(R.id.navigation)
         setupNavbarListener()
         mPrefs!!.setListener(this)
-        pagerAdapter = NekoAdapter(this)
-        viewPager?.adapter = pagerAdapter
+        if(mPrefs!!.isMusicEnabled()) {
+            mPrefs!!.setMusic(false)
+        }
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         if (supportActionBar != null) {
@@ -109,6 +111,7 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window!!.navigationBarColor = SurfaceColors.SURFACE_2.getColor(this)
         CoroutineScope(Dispatchers.Default).launch {
+            pagerAdapter = NekoAdapter(this@NekoGeneralActivity)
             if (mPrefs!!.backgroundPath != "") {
                 try {
                     val bmp = BitmapFactory.decodeFile(mPrefs!!.backgroundPath)
@@ -123,30 +126,33 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
                     }
                 }
             }
-        }
-        if (!nekoprefs?.getBoolean("controlsFirst", false)!!) {
-            viewPager?.currentItem = 0
-            navbar?.selectedItemId = R.id.collection
-        } else {
-            viewPager?.currentItem = 1
-            navbar?.selectedItemId = R.id.controls
-        }
-        viewPager?.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                super.onPageSelected(position)
-                if (position == 0) {
+            withContext(Dispatchers.Main) {
+                viewPager?.adapter = pagerAdapter
+                if (!nekoprefs?.getBoolean("controlsFirst", false)!!) {
+                    viewPager?.currentItem = 0
                     navbar?.selectedItemId = R.id.collection
                 } else {
-                    checkTwoState()
+                    viewPager?.currentItem = 1
                     navbar?.selectedItemId = R.id.controls
                 }
+                viewPager?.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                    override fun onPageSelected(position: Int) {
+                        super.onPageSelected(position)
+                        if (position == 0) {
+                            navbar?.selectedItemId = R.id.collection
+                        } else {
+                            checkTwoState()
+                            navbar?.selectedItemId = R.id.controls
+                        }
+                    }
+                })
             }
-        })
+        }
     }
 
     override fun onStart() {
         super.onStart()
-        mediaPlayer = MediaPlayer()
+     /**   mediaPlayer = MediaPlayer()
         val afd = getResources().assets.openFd("music/music1.mp3")
         mediaPlayer!!.isLooping = true
         mediaPlayer!!.setDataSource(afd.fileDescriptor, afd.startOffset, afd.getLength())
@@ -158,7 +164,7 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
             mediaPlayer!!.prepare()
             mediaPlayer!!.start()
             isMusicPlaying = true
-        }
+        } **/
         if (getAndroidV()) androidVDialog()
         if (needWelcomeDialog) welcomeDialog()
         if(!areNotificationsEnabled(NotificationManagerCompat.from(this))) {
