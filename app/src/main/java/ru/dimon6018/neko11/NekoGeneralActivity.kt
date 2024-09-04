@@ -46,6 +46,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -110,42 +111,45 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
         }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window!!.navigationBarColor = SurfaceColors.SURFACE_2.getColor(this)
-        CoroutineScope(Dispatchers.Default).launch {
+        lifecycleScope.launch(Dispatchers.Default) {
             pagerAdapter = NekoAdapter(this@NekoGeneralActivity)
             if (mPrefs!!.backgroundPath != "") {
                 try {
                     val bmp = BitmapFactory.decodeFile(mPrefs!!.backgroundPath)
                     val bmpNew = Bitmap.createBitmap(bmp, viewPager!!.x.toInt(), viewPager!!.y.toInt(), bmp.width, bmp.height, null, true)
-                    runOnUiThread {
-                        cord!!.background = bmpNew.toDrawable(resources)
+                    withContext(Dispatchers.Main) {
+                        cord?.background = bmpNew.toDrawable(resources)
                     }
                 } catch (ex: Exception) {
-                    cord!!.background = null
-                    cord!!.post {
-                        showSnackBar(ex.toString(), Snackbar.LENGTH_LONG, cord)
+                    cord?.apply {
+                        background = null
+                        showSnackBar(ex.toString(), Snackbar.LENGTH_LONG, this)
                     }
                 }
             }
             withContext(Dispatchers.Main) {
-                viewPager?.adapter = pagerAdapter
-                if (!nekoprefs?.getBoolean("controlsFirst", false)!!) {
-                    viewPager?.currentItem = 0
-                    navbar?.selectedItemId = R.id.collection
-                } else {
-                    viewPager?.currentItem = 1
-                    navbar?.selectedItemId = R.id.controls
-                }
-                viewPager?.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                    override fun onPageSelected(position: Int) {
-                        super.onPageSelected(position)
-                        if (position == 0) {
-                            navbar?.selectedItemId = R.id.collection
-                        } else {
-                            checkTwoState()
-                            navbar?.selectedItemId = R.id.controls
-                        }
+                viewPager?.apply {
+                    if (!nekoprefs?.getBoolean("controlsFirst", false)!!) {
+                        currentItem = 0
+                        navbar?.selectedItemId = R.id.collection
+                    } else {
+                        viewPager?.currentItem = 1
+                        navbar?.selectedItemId = R.id.controls
                     }
-                })
+                    registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                        override fun onPageSelected(position: Int) {
+                            super.onPageSelected(position)
+                            navbar?.apply {
+                                if (position == 0) {
+                                    selectedItemId = R.id.collection
+                                } else {
+                                    checkTwoState()
+                                    selectedItemId = R.id.controls
+                                }
+                            }
+                        }
+                    })
+                }
             }
         }
     }
@@ -216,11 +220,11 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
                 if (!DEBUG) {
                     startActivity(Intent(this@NekoGeneralActivity, NekoAboutActivity::class.java))
                 } else {
-                    var cat: Cat?
-                    for (i in 0..10) {
-                        cat = NekoWorker.newRandomCat(this, mPrefs!!, true)
-                        mPrefs!!.addCat(cat)
-                        mPrefs!!.addNCoins(666)
+                    mPrefs!!.apply {
+                        for (i in 0..10) {
+                            addCat(NekoWorker.newRandomCat(this@NekoGeneralActivity, this, true))
+                            addNCoins(666)
+                        }
                     }
                 }
                 return true
@@ -243,11 +247,13 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
         }
     }
     public override fun onDestroy() {
-        mPrefs?.setListener(null)
         super.onDestroy()
-        if(mPrefs!!.isMusicEnabled()) {
-            isMusicPlaying = false
-            mediaPlayer?.release()
+        if(mPrefs != null) {
+            mPrefs?.setListener(null)
+            if(mPrefs!!.isMusicEnabled()) {
+                isMusicPlaying = false
+                mediaPlayer?.release()
+            }
         }
     }
     public override fun onPause() {
@@ -391,21 +397,22 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
     }
 
     private fun setupNavbarListener() {
-        navbar?.setOnItemSelectedListener { item: MenuItem ->
-            if (item.itemId == R.id.collection) {
-                viewPager!!.currentItem = 0
-                return@setOnItemSelectedListener true
-            } else if (item.itemId == R.id.controls) {
-                if (checkState() != -1) {
-                    viewPager!!.currentItem = 1
-                    navbar?.animate()?.translationY(0f)?.setDuration(200)
-                } else {
-                    viewPager!!.currentItem = 1
-                    val editor = nekoprefs!!.edit()
-                    editor.putInt("state", 0)
-                    editor.apply()
-                    navbar?.animate()?.translationY(0f)?.setDuration(200)
-                    MaterialAlertDialogBuilder(this)
+        navbar?.apply {
+            setOnItemSelectedListener { item: MenuItem ->
+                if (item.itemId == R.id.collection) {
+                    viewPager!!.currentItem = 0
+                    return@setOnItemSelectedListener true
+                } else if (item.itemId == R.id.controls) {
+                    if (checkState() != -1) {
+                        viewPager!!.currentItem = 1
+                        animate()?.translationY(0f)?.setDuration(200)
+                    } else {
+                        viewPager!!.currentItem = 1
+                        val editor = nekoprefs!!.edit()
+                        editor.putInt("state", 0)
+                        editor.apply()
+                        animate()?.translationY(0f)?.setDuration(200)
+                        MaterialAlertDialogBuilder(this@NekoGeneralActivity)
                             .setTitle(R.string.app_name_neko)
                             .setIcon(R.drawable.ic_fullcat_icon)
                             .setMessage(R.string.welcome_dialog_part3)
@@ -414,18 +421,19 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
                                 showSnackBar(getString(R.string.welcome_dialog_final), Snackbar.LENGTH_LONG, navbar)
                                 setCurrentState(0)
                             }.show()
+                    }
+                    val editor = nekoprefs!!.edit()
+                    editor.putInt("state", 0)
+                    editor.apply()
+                    return@setOnItemSelectedListener true
                 }
-                val editor = nekoprefs!!.edit()
-                editor.putInt("state", 0)
-                editor.apply()
-                return@setOnItemSelectedListener true
+                false
             }
-            false
-        }
-        ViewCompat.setOnApplyWindowInsetsListener(navbar!!) { v: View, insets: WindowInsetsCompat ->
-            val pB = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).top
-            v.setPadding(0, 0, 0, pB)
-            WindowInsetsCompat.CONSUMED
+            ViewCompat.setOnApplyWindowInsetsListener(this) { v: View, insets: WindowInsetsCompat ->
+                val pB = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).top
+                v.setPadding(0, 0, 0, pB)
+                WindowInsetsCompat.CONSUMED
+            }
         }
     }
     fun checkTwoState() {
@@ -462,10 +470,10 @@ class NekoGeneralActivity : AppCompatActivity(), PrefsListener {
 
     private val gift: Unit
         get() {
-            var cat: Cat?
-            for (i in 0..6) {
-                cat = NekoWorker.newRandomCat(this, mPrefs!!, true)
-                mPrefs?.addCat(cat)
+            mPrefs?.apply {
+                for (i in 0..6) {
+                    addCat(NekoWorker.newRandomCat(this@NekoGeneralActivity, this, true))
+                }
             }
             setCurrentState(-1)
             MaterialAlertDialogBuilder(this)

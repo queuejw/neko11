@@ -72,10 +72,6 @@ class CatControlsFragment : Fragment(), PrefsListener {
         } else {
             R.layout.fragment_cat_controls
         }
-        if (nekoprefs!!.getInt("state", 1) == 2) {
-            showTipAgain = false
-            createTipDialog(context)
-        }
         val view = inflater.inflate(layout, container, false)
         mPrefs = PrefState(requireContext())
         toystatusimg = view.findViewById(R.id.toy_state_img)
@@ -96,18 +92,25 @@ class CatControlsFragment : Fragment(), PrefsListener {
         toiletStatesub = view.findViewById(R.id.toilet_state_sub)
         boosterActivedSub = view.findViewById(R.id.booster_actived_sub)
         waterDrinkTip = view.findViewById(R.id.drink_tip)
+        if(nekoprefs?.getBoolean("legacyGameplay", false)!!) {
+            toiletCard?.visibility = View.GONE
+        }
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val context = context
         toystatusimg!!.setImageResource(toyiconint)
-        setupTiles(context)
-        if(nekoprefs?.getBoolean("legacyGameplay", false)!!) {
-            toiletCard?.visibility = View.GONE
+        if(context != null) {
+            setupTiles(requireContext())
         }
         updateTiles()
+        if (nekoprefs!!.getInt("state", 1) == 2) {
+            showTipAgain = false
+            if(context != null) {
+                createTipDialog(requireContext())
+            }
+        }
     }
     override fun onResume() {
         super.onResume()
@@ -225,6 +228,7 @@ class CatControlsFragment : Fragment(), PrefsListener {
         val food3 = bottomSheetInternal.findViewById<MaterialCardView>(R.id.food_3)
         val food4 = bottomSheetInternal.findViewById<MaterialCardView>(R.id.food_4)
         val food5 = bottomSheetInternal.findViewById<MaterialCardView>(R.id.food_5)
+        randomfood = Random().nextInt(250 - 10 + 1) + 10
         food0.setOnClickListener {
             mPrefs!!.foodState = 1
             if(!mPrefs!!.isLegacyFoodEnabled()) {
@@ -385,8 +389,10 @@ class CatControlsFragment : Fragment(), PrefsListener {
     }
 
     private fun startAnim(view: View?) {
-        view?.startAnimation(AnimationUtils.loadAnimation(context, android.R.anim.fade_out))
-        view?.startAnimation(AnimationUtils.loadAnimation(context, android.R.anim.fade_in))
+        view?.let {
+            it.startAnimation(AnimationUtils.loadAnimation(context, android.R.anim.fade_out))
+            it.startAnimation(AnimationUtils.loadAnimation(context, android.R.anim.fade_in))
+        }
     }
 
     private fun createTipDialog(context: Context?) {
@@ -402,7 +408,7 @@ class CatControlsFragment : Fragment(), PrefsListener {
     }
     companion object {
         var showTipAgain = true
-        val randomfood = Random().nextInt(250 - 10 + 1) + 10
+        var randomfood = Random().nextInt(250 - 10 + 1) + 10
         val foodstaterandom = Random().nextInt(11 - 1 + 1) + 1
         @JvmField
         val randomWater = Random().nextInt(150 - 12 + 1) + 5

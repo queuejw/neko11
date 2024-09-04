@@ -6,7 +6,7 @@ plugins {
 android {
     namespace 'ru.dimon6018.neko11'
 
-    compileSdk 34
+    compileSdk 35
 	
     buildFeatures {
         buildConfig = true
@@ -14,9 +14,9 @@ android {
     defaultConfig {
         applicationId "ru.dimon6018.neko11"
         minSdk 21
-        targetSdk 34
-        versionCode 11
-        versionName '2.3_13'
+        targetSdk 35
+        versionCode 12
+        versionName '2.3_14'
         multiDexEnabled false
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,24 +30,19 @@ android {
        }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
-    setBuildToolsVersion('35.0.0-rc01')
 }
 
 dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.annotation:annotation:1.8.0'
+    implementation 'androidx.annotation:annotation:1.8.2'
     implementation 'com.google.android.material:material:1.10.0'
-    implementation 'androidx.recyclerview:recyclerview:1.4.0-alpha01'
+    implementation 'androidx.recyclerview:recyclerview:1.4.0-beta01'
     implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.fragment:fragment-ktx:1.7.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.2'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
-    implementation 'androidx.work:work-runtime:2.9.0'
-	
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'androidx.work:work-runtime:2.9.1'
 }

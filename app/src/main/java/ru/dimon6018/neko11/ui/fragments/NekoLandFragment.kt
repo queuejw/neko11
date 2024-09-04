@@ -46,6 +46,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -59,7 +60,9 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.dimon6018.neko11.NekoApplication
 import ru.dimon6018.neko11.NekoGeneralActivity.Companion.showSnackBar
 import ru.dimon6018.neko11.R
@@ -117,8 +120,10 @@ class NekoLandFragment : Fragment(), PrefsListener {
             mAdapter = CatAdapter()
             if (nekoprefs!!.getBoolean("skinsConfigured", false)) {
                 nekoprefs!!.edit().putBoolean("skinsConfigured", true).apply()
-                mPrefs!!.setupHats()
-                mPrefs!!.setupSuits()
+                mPrefs?.let {
+                    it.setupHats()
+                    it.setupSuits()
+                }
             }
             requireActivity().runOnUiThread {
                 recyclerView!!.setAdapter(mAdapter)
@@ -130,7 +135,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
         super.onDestroy()
     }
     private fun updateCats(): Int {
-        CoroutineScope(Dispatchers.Default).launch {
+        lifecycleScope.launch(Dispatchers.Default) {
             val list: MutableList<Cat> = mPrefs!!.cats.toMutableList()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 //See https://github.com/chris-blay/AndroidNougatEasterEgg/blob/master/workspace/src/com/covertbagel/neko/NekoLand.java
@@ -149,8 +154,8 @@ class NekoLandFragment : Fragment(), PrefsListener {
                     0 -> {}
                 }
             }
-            numCatsP = list.size
-            recyclerView?.post {
+            withContext(Dispatchers.Main) {
+                numCatsP = list.size
                 mAdapter?.setCats(list)
                 updateLM()
                 updateCounter(numCatsP)
@@ -209,7 +214,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
             age!!.text = getString(R.string.cat_age, cat.age)
             status!!.text = getString(R.string.cat_status_string, cat.status)
             catEditor!!.setText(cat.name)
-        } catch (e: ClassCastException) {
+        } catch (_: ClassCastException) {
             mood!!.text = getString(R.string.error)
             mPrefs!!.removeMood(cat)
             mPrefs!!.setMood(cat, 3)
@@ -217,7 +222,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
         catImage?.setImageDrawable(icon)
         if (coloredText!!) {
             age!!.setTextColor(NekoApplication.getTextColor(context))
-            mood!!.setTextColor(NekoApplication.getTextColor(context))
+            mood.setTextColor(NekoApplication.getTextColor(context))
             catEditor!!.setTextColor(NekoApplication.getTextColor(context))
             status!!.setTextColor(NekoApplication.getTextColor(context))
         }
@@ -269,7 +274,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
             item0.setOnClickListener {
                 mPrefs!!.removeMoodBooster(1)
                 mPrefs!!.setMood(cat, 5)
-                mood!!.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
+                mood.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
                 bottomsheet!!.dismiss()
                 alertd.dismiss()
             }
@@ -319,7 +324,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
                         .setNegativeButton(android.R.string.ok, null)
                         .show()
             }
-            mood!!.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
+            mood.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
             refreshBottomSheetIcon(cat, catImage, mPrefs!!)
         }
         caress.setOnClickListener {
@@ -346,7 +351,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
                         .setNegativeButton(android.R.string.ok, null)
                         .show()
             }
-            mood!!.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
+            mood.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
         }
         touch.setOnClickListener {
             mPrefs!!.setCanInteract(cat, mPrefs!!.isCanInteract(cat) - 1)
@@ -373,7 +378,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
                         .setNegativeButton(android.R.string.ok, null)
                         .show()
             }
-            mood!!.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
+            mood.text = context.getString(R.string.mood, NekoApplication.getCatMood(context, cat))
         }
         skins!!.setOnClickListener {
             skinsBottomSheet(context, cat)
@@ -597,15 +602,17 @@ class NekoLandFragment : Fragment(), PrefsListener {
 
     override fun onResume() {
         super.onResume()
-        mPrefs!!.setListener(this)
-        numCats = updateCats()
-        if(mPrefs!!.isDialogEnabled()) {
-            mPrefs!!.setRunDialog(false)
-            MaterialAlertDialogBuilder(requireContext())
+        mPrefs?.apply {
+            setListener(this@NekoLandFragment)
+            numCats = updateCats()
+            if(isDialogEnabled()) {
+                setRunDialog(false)
+                MaterialAlertDialogBuilder(requireContext())
                     .setIcon(R.drawable.ic_game)
                     .setMessage(R.string.cat_run_message)
                     .setPositiveButton(android.R.string.ok, null)
                     .show()
+            }
         }
     }
 
@@ -631,14 +638,16 @@ class NekoLandFragment : Fragment(), PrefsListener {
         private var suitPricesArray: IntArray = intArrayOf(0, 1, 150, 200, 300, 500, 300, 250, 200, 250, 300, 400)
         private var suitList: ArrayList<SkinItems>? = null
         private var hatList: ArrayList<SkinItems>? = null
+
         fun refreshBottomSheetIcon(cat: Cat, catPreview: ImageView, mPrefs: PrefState) {
             val newCat = mPrefs.catBySeed(cat.seed)
-            Thread {
+            CoroutineScope(Dispatchers.Default).launch {
                 val icon = newCat?.createIconBitmap(iconSize!!, iconSize!!, mPrefs.getIconBackground())
-                catPreview.post {
+                withContext(Dispatchers.Main) {
                     catPreview.setImageBitmap(icon)
                 }
-            }.start()
+                cancel()
+            }
         }
         fun shareCat(activity: Activity, cat: Cat, iShouldShowDialog: Boolean) {
             val dir = File(
@@ -665,6 +674,7 @@ class NekoLandFragment : Fragment(), PrefsListener {
                             .show()
                 }
             } catch (e: IOException) {
+                e.printStackTrace()
                 if (iShouldShowDialog) {
                     MaterialAlertDialogBuilder(activity)
                             .setTitle(R.string.app_name_neko)
@@ -696,35 +706,45 @@ class NekoLandFragment : Fragment(), PrefsListener {
         override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
             val items = dataSet[position]
             val prefs = PrefState(context)
-            viewHolder.textView.text = items.text
-            viewHolder.imageView.setImageDrawable(items.image)
-            val price = suitPricesArray[position].toString() + " NCoin"
-            if (price == "0 NCoin") {
-                viewHolder.price.text = ""
-            } else {
-                viewHolder.price.text = price
-            }
-            if (prefs.getPrefsAccess().getBoolean("is_suit_purchased_$position", false)) {
-                viewHolder.price.text = ""
-            }
-            viewHolder.itemView.setOnClickListener {
-                if (position != 0) {
-                    if (prefs.getPrefsAccess().getBoolean("is_suit_purchased_$position", false)) {
-                        prefs.setCatSuit(position, cat.seed)
-                        refreshBottomSheetIcon(cat, catPreview, prefs)
-                    } else {
-                        MaterialAlertDialogBuilder(context)
+            viewHolder.apply {
+                textView.text = items.text
+                imageView.setImageDrawable(items.image)
+                val priceTxt = suitPricesArray[position].toString() + " NCoin"
+                if (priceTxt == "0 NCoin") {
+                    price.text = ""
+                } else {
+                    price.text = priceTxt
+                }
+                if (prefs.getPrefsAccess().getBoolean("is_suit_purchased_$position", false)) {
+                    price.text = ""
+                }
+                itemView.setOnClickListener {
+                    if (position != 0) {
+                        if (prefs.getPrefsAccess()
+                                .getBoolean("is_suit_purchased_$position", false)
+                        ) {
+                            prefs.setCatSuit(position, cat.seed)
+                            refreshBottomSheetIcon(cat, catPreview, prefs)
+                        } else {
+                            MaterialAlertDialogBuilder(context)
                                 .setTitle(R.string.skins)
-                                .setMessage(context.getString(R.string.skins_purchase_dialog, items.text, hatPricesArray[position]))
+                                .setMessage(
+                                    context.getString(
+                                        R.string.skins_purchase_dialog,
+                                        items.text,
+                                        hatPricesArray[position]
+                                    )
+                                )
                                 .setIcon(R.drawable.ic_skins)
                                 .setNegativeButton(android.R.string.cancel, null)
                                 .setPositiveButton(R.string.yes) { _: DialogInterface?, _: Int ->
                                     purchase(prefs, position, viewHolder)
                                 }.show()
+                        }
+                    } else {
+                        prefs.setCatSuit(position, cat.seed)
+                        refreshBottomSheetIcon(cat, catPreview, prefs)
                     }
-                } else {
-                    prefs.setCatSuit(position, cat.seed)
-                    refreshBottomSheetIcon(cat, catPreview, prefs)
                 }
             }
         }
@@ -737,18 +757,21 @@ class NekoLandFragment : Fragment(), PrefsListener {
                         .setNegativeButton(android.R.string.ok, null
                         ).show()
             } else {
-                prefs.removeNCoins(suitPricesArray[position])
-                prefs.getEditor().putBoolean("is_suit_purchased_$position", true).apply()
-                prefs.setCatSuit(position, cat.seed)
+                prefs.apply {
+                    removeNCoins(suitPricesArray[position])
+                    getEditor().putBoolean("is_suit_purchased_$position", true).apply()
+                    setCatSuit(position, cat.seed)
+                }
                 coins.text = context.getString(R.string.coins, prefs.nCoins)
                 viewHolder.price.text = ""
                 val newCat = prefs.catBySeed(cat.seed)
-                Thread {
+                CoroutineScope(Dispatchers.Default).launch {
                     val icon = newCat?.createIconBitmap(iconSize!!, iconSize!!, prefs.getIconBackground())
-                    catPreview.post {
+                    withContext(Dispatchers.Main) {
                         catPreview.setImageBitmap(icon)
                     }
-                }.start()
+                    cancel()
+                }
             }
         }
         override fun getItemCount() = dataSet.size
@@ -820,12 +843,13 @@ class NekoLandFragment : Fragment(), PrefsListener {
                 coins.text = context.getString(R.string.coins, prefs.nCoins)
                 viewHolder.price.text = ""
                 val newCat = prefs.catBySeed(cat.seed)
-                Thread {
+                CoroutineScope(Dispatchers.Default).launch {
                     val icon = newCat?.createIconBitmap(iconSize!!, iconSize!!, prefs.getIconBackground())
-                    catPreview.post {
+                    withContext(Dispatchers.Main) {
                         catPreview.setImageBitmap(icon)
                     }
-                }.start()
+                    cancel()
+                }
             }
         }
         override fun getItemCount() = dataSet.size

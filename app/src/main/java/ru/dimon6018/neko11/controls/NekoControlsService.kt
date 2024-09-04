@@ -20,7 +20,6 @@ package ru.dimon6018.neko11.controls
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
@@ -62,7 +61,6 @@ const val COLOR_WATER_BG = COLOR_WATER_FG and 0x40FFFFFF
 const val COLOR_TOY_FG = 0xFFFF4080.toInt()
 const val COLOR_TOY_BG = COLOR_TOY_FG and 0x40FFFFFF
 const val COLOR_TOILET_FG = 0x99807977.toInt()
-const val COLOR_TOILET_BG = COLOR_TOILET_FG and 0x99DFD3
 
 val P_TOY_ICONS = intArrayOf(
         1, R.drawable.ic_toy_mouse,
@@ -87,7 +85,7 @@ class NekoControlsService : ControlsProviderService(), PrefState.PrefsListener {
 
         prefs = PrefState(this)
         prefs.setListener(this)
-        nekoprefs = getSharedPreferences(NekoSettingsActivity.SETTINGS, Context.MODE_PRIVATE)
+        nekoprefs = getSharedPreferences(NekoSettingsActivity.SETTINGS, MODE_PRIVATE)
         createDefaultControls()
     }
     override fun onPrefsChanged() {
@@ -309,7 +307,7 @@ class NekoControlsService : ControlsProviderService(), PrefState.PrefsListener {
 
         fun unsubscribe(sub: UglySubscription) {
             subscriptions.remove(sub)
-            if (subscriptions.size == 0) {
+            if (subscriptions.isEmpty()) {
                 publishers.remove(this)
             }
         }
